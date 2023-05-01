@@ -13,7 +13,7 @@ WebServer server(80);
 const int led = LED_BUILTIN;
 
 volatile bool pcIntTriggering = false; //  割り込み発生中フラグ
-Target t1 = Target(14,15);
+Target t1 = Target(14,15,"ch1");
 
 inline uint32_t get_cvr()
 {

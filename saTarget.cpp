@@ -3,12 +3,14 @@
 #include <Arduino.h>
 
 
-Target::Target(uint8_t sPin, uint8_t lPin){
+Target::Target(uint8_t sPin, uint8_t lPin, String name){
+  name = name;
   sensorPin = sPin;
   ledPin = lPin;
   hitTime = millis();
   gpTimer = millis();
   targetHit = false;
+  m_pHitFunc = &Target::ledOff;
   
 
   pinMode(ledPin, OUTPUT);
@@ -17,38 +19,36 @@ Target::Target(uint8_t sPin, uint8_t lPin){
   digitalWrite(ledPin, LOW);
 
 }
-/*
-void Target::_hitEvent(){
-  if( !targetHit ){
-      if((millis() - hitTime) > 100){
-          targetHit = true;
-          hitTime = millis();
-      }
-  }
-}
-*/
-/*
-static void Target::hitEvent(void *arg){
-  Target *tg = static_cast<Target *>(arg);
-  if( !tg->targetHit ){
-      if((millis() - tg->hitTime) > 100){
-          tg->targetHit = true;
-          tg->hitTime = millis();
-      }
-  }
-}
-*/
+
 void Target::ledOn(){
   digitalWrite(ledPin, HIGH);
 }
 void Target::ledOff(){
   digitalWrite(ledPin, LOW);
 }
-
+void Target::timerStart(){
+  gpTimer = millis();
+}
+void Target::ChangeHitAction(uint8_t state){
+  if (state==0){
+    m_pHitFunc = &Target::ledOn;
+  }
+  else if(state==1){
+    m_pHitFunc = &Target::ledOff;
+  }
+}
+/*
+void Target::timerStop(){
+  
+}*/
+int Target::timerDiffMs(){
+  return millis() - gpTimer;
+}
 
 void Target::updateStatus(){
   if( targetHit ){
-    ledOff();
+    // Access the member function
+    (this->*m_pHitFunc)();
     targetHit = false;
   }
 }
