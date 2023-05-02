@@ -8,16 +8,39 @@
 #include "secrets.h"
 #include "saTarget.h"
 
+#define TARGET_NUM 2
 
 WebServer server(80);
 const int led = LED_BUILTIN;
 
 volatile bool pcIntTriggering = false; //  割り込み発生中フラグ
-Target t1 = Target(14,15,"ch1");
+Target targets[TARGET_NUM] = {Target(14,15,"ch1"),Target(16,17,"ch2")};
+Target t1 = targets[0];
 
 inline uint32_t get_cvr()
 {
   return systick_hw->cvr;
+}
+
+void ledControll(){
+  digitalWrite(led, 1);
+  for (uint8_t i = 0; i < TARGET_NUM; i++){
+    String findArg = "led" + String(i);
+    Serial.print("find arg: ");
+    Serial.print(findArg);
+    Serial.print("\n");
+
+    for (uint8_t j = 0; j < server.args(); j++){
+      if (server.argName(j) == findArg){
+        Serial.printf("arg found!!");
+        if (server.arg(j) == "on"){targets[i].ledOn();}
+        else if (server.arg(j) == "off"){targets[i].ledOff();}
+        
+      }
+    }
+  }
+  server.send(200, "text/plain", "hello from pico w!\r\n");
+  digitalWrite(led, 0);
 }
 
 void handleRoot() {
@@ -94,6 +117,17 @@ void setup() {
   }
 
   server.on("/", handleRoot);
+  server.on("/led", ledControll);
+  server.onNotFound(handleNotFound);
+  server.addHook([](const String & method, const String & url, WiFiClient * client, WebServer::ContentTypeFunction contentType) {
+    (void)method;       // GET, PUT, ...
+    (void)url;          // example: /root/myfile.html
+    (void)client;       // the webserver tcp client connection
+    (void)contentType;  // contentType(".html") => "text/html"
+    Serial.printf("A useless web hook has passed\n");
+    Serial.printf("%s\n", server.uri());
+    return WebServer::CLIENT_REQUEST_CAN_CONTINUE;
+  });
 
   server.begin();
   Serial.println("[status] HTTP server started");
