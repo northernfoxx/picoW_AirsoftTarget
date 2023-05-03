@@ -1,15 +1,81 @@
 <!DOCTYPE html>
 <html lang="ja">
     <head>
+        <meta charset="UTF-8">
+        <style>
+            .ledon  {color: lightgreen; font-size: 1.5em}
+            .ledoff {color: gray; font-size: 1.5em}
+        </style>
         <script>
-            function ledOn(){
-                fetch("./led")
+            var targetState = {
+                name: "Target",
+                leds: [1,0,0,0,1]
+            };
+
+            function syncTargetState(){
+                fetch("./status",{
+                    method: "GET"
+                }).then( (response) =>{
+                    return response.json()
+                }).then( (data) => {
+                    console.log(data);
+                    targetState = data;
+                    showStatus();
+                })
             }
+
+            function state2Param(){
+                let arr=[1,2,3];
+                let str = "";
+                for(let i; i < arr.length; i){
+                    if (arr[i] == 1){ str += "led" + i + "=on"; }
+                    if (arr[i] == 0){ str += "led" + i + "=off"; }
+                    if (i < arr.length-1){str +=",";}
+                }
+                return str;
+            }
+            function showStatus(){
+                let leds = targetState.leds;
+                let disp = document.getElementById("status");
+                disp.innerHTML = "";
+                for (let i=0; i < leds.length; i++ ){
+                    if (leds[i] == 0){
+                        disp.innerHTML += "<span class='ledoff'>■</span>";
+                    }
+                    if (leds[i] == 1){
+                        disp.innerHTML += "<span class='ledon'>■</span>";
+                    }
+                } 
+                
+            }
+            function ledOn(){
+                fetch("./led",{
+                    method: "POST", 
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body:"led0=on"
+                });
+            }
+            function setHitAction(){
+                fetch("./led",{
+                    method: "POST", 
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body:"trans=off"
+                });
+            }
+
+            window.addEventListener("DOMContentLoaded", function(){
+                setInterval(syncTargetState, 500);
+            });
         </script>
     </head>
     <body>
+        <button onclick="ledOn">LED ON</button>
+        <button onclick="showStatus()">FUNC TEST</button>
         <form action="./lighton">
             <input type="submit" value="TEST1">
         </form>
+        <div id="status">
+
+        </div>
     </body>
 </html>
