@@ -7,15 +7,17 @@
 
 #include "secrets.h"
 #include "saTarget.h"
+#include "html.h"
 
-#define TARGET_NUM 2
+#define TARGET_NUM 3
 
 WebServer server(80);
 const int led = LED_BUILTIN;
 
 volatile bool pcIntTriggering = false; //  割り込み発生中フラグ
-Target targets[TARGET_NUM] = {Target(14,15,"ch1"),Target(16,17,"ch2")};
+Target targets[TARGET_NUM] = {Target(14,15,"ch0"),Target(12,13,"ch1"),Target(10,11,"ch2")};
 Target t1 = targets[0];
+Target t2 = targets[1];
 
 inline uint32_t get_cvr()
 {
@@ -43,13 +45,60 @@ void ledControll(){
   digitalWrite(led, 0);
 }
 
-void handleRoot() {
+void returnStatus() {
   digitalWrite(led, 1);
-  server.send(200, "text/plain", "hello from pico w!\r\n");
+  String jsonStr = "";
+  jsonStr += "{\"targetNumber\": ";
+  jsonStr += String(TARGET_NUM);
+  jsonStr += ", \"time\": ";
+  jsonStr += String(millis());
+  jsonStr += ", \"leds\": [";
+  for (uint8_t i = 0; i < TARGET_NUM; i++){
+    if (digitalRead(targets[i].ledPin) == HIGH){
+      jsonStr += "1";
+    }
+        if (digitalRead(targets[i].ledPin) == LOW){
+      jsonStr += "0";
+    }
+    if (i < TARGET_NUM-1){ jsonStr += ","; }
+    else{ jsonStr += "]";}
+  }
+
+  jsonStr += "}";
+
+  //server.send(200, "text/plain", "hello from pico w!\r\n");
+  server.send(200, "text/json", jsonStr);
   digitalWrite(led, 0);
   Serial.print("[Time] ");
   Serial.println(String(millis()));
   t1.ledOn();
+}
+
+void setSensitivity() {
+digitalWrite(led, 1);
+int sense = 0;
+if (!(server.args() > 0)){return;}
+Serial.print("setsense argname: ");
+Serial.println(server.argName(0));
+Serial.print("setsense argval: ");
+Serial.println(server.arg(0));
+if (server.argName(0) == "sense" ){
+  sense = server.arg(0).toInt();
+  Serial.print("set : ");
+  Serial.println(sense);
+}
+analogWrite(16, sense);
+server.send(200, "text/plain", "senes set!\r\n");
+digitalWrite(led, 0);
+}
+
+void handleRoot() {
+  digitalWrite(led, 1);
+  //server.send(200, "text/plain", "hello from pico w!\r\n");
+  server.send(200, "text/html", htmlMainpage);
+  digitalWrite(led, 0);
+  Serial.print("[Time] ");
+  Serial.println(String(millis()));
 }
 
 void handleNotFound() {
@@ -118,6 +167,8 @@ void setup() {
 
   server.on("/", handleRoot);
   server.on("/led", ledControll);
+  server.on("/status", returnStatus);
+  server.on("/setsense", setSensitivity);
   server.onNotFound(handleNotFound);
   server.addHook([](const String & method, const String & url, WiFiClient * client, WebServer::ContentTypeFunction contentType) {
     (void)method;       // GET, PUT, ...
@@ -135,6 +186,13 @@ void setup() {
   t1.ledOn();
   //attachInterrupt(t1.sensorPin, hitEvent, RISING, t1);
   attachInterruptParam(t1.sensorPin, hitEvent, RISING, (void *)&t1);
+  attachInterruptParam(t2.sensorPin, hitEvent, RISING, (void *)&t2);
+  attachInterruptParam(targets[2].sensorPin, hitEvent, RISING, (void *)&targets[2]);
+  //attachInterruptParam(targets[1].sensorPin, hitEvent, RISING, (void *)&targets[1]);
+
+
+  pinMode(16, OUTPUT);
+  
 }
 
 void loop() {
@@ -142,4 +200,6 @@ void loop() {
   server.handleClient();
   MDNS.update();
   t1.updateStatus();
+  t2.updateStatus();
+  targets[2].updateStatus();
 }
