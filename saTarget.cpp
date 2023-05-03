@@ -14,6 +14,7 @@ Target::Target(uint8_t sPin, uint8_t lPin, String name){
   
 
   pinMode(ledPin, OUTPUT);
+  pinMode(sensorPin, INPUT);
   digitalWrite(ledPin, HIGH);
   delay(500);
   digitalWrite(ledPin, LOW);
